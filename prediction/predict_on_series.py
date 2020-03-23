@@ -123,6 +123,16 @@ def image_predictor(image_dir, model):
         # yield image
 
 
+def predictor(model, image_dir):
+    index = 0
+    while index < len(image_dir):
+
+        image = cv2.imread(image_dir[index], 1)
+        prediction = run_inference_for_single_image(model, image)
+        index += 1
+        yield prediction, image
+
+
 def _load_model(model_name):
     _model_dir = pathlib.Path(model_name)/"saved_model"
     model = tf.saved_model.load(str(_model_dir))
