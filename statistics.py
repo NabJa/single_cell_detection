@@ -6,6 +6,7 @@ import numpy as np
 from scipy.spatial import distance
 from data import bbox_utils as box
 
+
 def compute_overlaps(boxes1, boxes2):
     """Computes IoU overlaps between two sets of boxes.
     boxes1, boxes2: [N, (y1, x1, y2, x2)].

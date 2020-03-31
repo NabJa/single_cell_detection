@@ -35,6 +35,7 @@ def main(graph_dir, image_path, out_dir):
         for i, (prediction, image) in enumerate(tqdm(predictor, total=len(eval_images))):
             bboxes = prediction.get("detection_boxes")[prediction.get("detection_scores") >= 0.5]
             write_image_prediction(join(out_dir_images, f"prediction_{i}.png"), image, bboxes)
+            #TODO save roc-curves
 
 
 def init_subdirs(out_dir, graph_name):

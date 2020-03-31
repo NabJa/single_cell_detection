@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 
 sys.path.insert(0, "C:\\Users\\N.Jabareen\\Projects\\data")
-from data_utils.data_transformations import bbox_utils as box
+from data import bbox_utils as box
 
 
 def load_model(model_name):
@@ -53,7 +53,7 @@ def run_inference_for_single_image(model, image):
 
     output_dict["detection_boxes"] = detections_normalized
 
-    return output_dict
+    return
 
 
 def run_inference_on_batch(model, images):

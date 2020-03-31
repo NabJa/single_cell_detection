@@ -14,7 +14,8 @@ from tqdm import tqdm
 import xmltodict
 
 import cv2
-import predict_on_series as predictor
+from prediction import predict_on_series as predictor
+
 
 def prepare_template_xml(image_path, template_path="Template.xml"):
 
