@@ -1,5 +1,5 @@
 """
-Plots for object detection tasks.
+Plotting library for object detection and model evaluation tasks.
 """
 
 from os.path import join, basename
@@ -21,16 +21,9 @@ from matplotlib import colors as mpl_colors
 import matplotlib.cm as cm
 
 
-def values_to_rgb(values):
-    minimum = np.min(values)
-    maximum = np.max(values)
-
-    norm = mpl_colors.Normalize(vmin=minimum, vmax=maximum, clip=True)
-    mapper = cm.ScalarMappable(norm=norm, cmap=cm.jet)
-
-    val_colors = np.array(list(map(mapper.to_rgba, values))) * 255
-    val_colors = val_colors[:, :3]
-    return val_colors.tolist()
+"""
+Matplotlib plots.
+"""
 
 
 def plot_image_distribution(image, title):
@@ -101,32 +94,9 @@ def plot_bboxes_on_image(image, *bbox_instances, bbox_format="xy1xy2", labels=No
     plt.show()
 
 
-# TODO add coloring options like in draw_circle_on_image function
-def draw_bboxes_on_image(image, *bbox_instances, bbox_format="xy1xy2"):
-    """
-    Draw bounding boxes on image.
-
-    :image:
-    :bbox_instances: Bboxes with format specified in bbox_format.
-    :bbox_format: Format of how bbox is saved. E.g. xy1xy2 = (xmin, ymin, xmax, ymax)
-    """
-
-    colors = plt.get_cmap("Set1").colors
-    colors = tuple(map(lambda x: (int(x[0]*255), int(x[1]*255), int(x[2]*255)), colors))
-
-    assert len(bbox_instances) < len(colors), f"Only {len(colors)} bbox instances supported."
-
-    gray_image = cv2.cvtColor(image, np.array(1), cv2.COLOR_GRAY2BGR)
-    thickness = 2
-
-    for i, bboxes in enumerate(bbox_instances):
-        for bbox in bboxes:
-            xmin, ymin, xmax, ymax = parse_bbox(bbox, bbox_format, "xy1xy2")
-            gray_image = cv2.rectangle(gray_image,
-                                (int(xmin), int(ymin)),
-                                (int(xmax), int(ymax)), colors[i], thickness)
-
-    return gray_image
+"""
+OpenCV2 drawings.
+"""
 
 
 def draw_circles_on_image(image, points, point_colors=None, default_color=(255, 0, 0)):
@@ -157,6 +127,99 @@ def draw_circles_on_image(image, points, point_colors=None, default_color=(255, 
         img = cv2.circle(img, (int(x), int(y)), radius, (0, 0, 0), 0)
 
     return img
+
+
+# TODO add coloring options like in draw_circle_on_image function
+def draw_bboxes_on_image(image, *bbox_instances, bbox_format="xy1xy2"):
+    """
+    Draw bounding boxes on image.
+
+    :image:
+    :bbox_instances: Bboxes with format specified in bbox_format.
+    :bbox_format: Format of how bbox is saved. E.g. xy1xy2 = (xmin, ymin, xmax, ymax)
+    """
+
+    colors = plt.get_cmap("Set1").colors
+    colors = tuple(map(lambda x: (int(x[0]*255), int(x[1]*255), int(x[2]*255)), colors))
+
+    assert len(bbox_instances) < len(colors), f"Only {len(colors)} bbox instances supported."
+
+    gray_image = cv2.cvtColor(image, np.array(1), cv2.COLOR_GRAY2BGR)
+    thickness = 2
+
+    for i, bboxes in enumerate(bbox_instances):
+        for bbox in bboxes:
+            xmin, ymin, xmax, ymax = parse_bbox(bbox, bbox_format, "xy1xy2")
+            gray_image = cv2.rectangle(gray_image,
+                                (int(xmin), int(ymin)),
+                                (int(xmax), int(ymax)), colors[i], thickness)
+
+    return gray_image
+
+
+# TODO command line support
+# TODO generalize write video
+def write_video_from_csv(csv_path, image_path, out_path, bbox_key="bbox20", fps=10):
+    """
+    Write a video with bboxes from csv file with columns: [Frame, X_Position, Y_Position]
+    """
+    df = pd.read_csv(csv_path, engine='python')
+
+    images = glob(join(image_path, "*.png"))
+
+    height, width, *_ = cv2.imread(images[0]).shape
+    video = cv2.VideoWriter(join(out_path, f'{basename(image_path)}.avi'), cv2.VideoWriter_fourcc(*'DIVX'), fps, (width, height))
+    for frame in np.unique(df.Frame):
+        image = cv2.imread(images[frame])
+        bboxes = list(df[df.Frame == frame][bbox_key])
+        image = draw_bboxes_on_image(image, bboxes)
+        video.write(image)
+    video.release()
+
+
+"""
+PLOTLY GRAPHS
+"""
+
+
+def plotly_image_slider(images, ticks, slider_prefix="Distance < "):
+    """
+    Plots all images with a slider named after ticks.
+    """
+
+    fig = go.Figure()
+
+    for img in images:
+        fig.add_trace(
+            go.Image(z=img, visible=False)
+            )
+
+    fig.data[0].visible = True
+
+    steps = []
+    for i, t in enumerate(ticks):
+        step = dict(
+            method="restyle",
+            args=["visible", [False] * len(fig.data)],
+            label=t
+        )
+        step["args"][1][i] = True
+        steps.append(step)
+
+    sliders = [dict(
+        active=0,
+        currentvalue={"prefix": slider_prefix},
+        pad={"t": 50},
+        steps=steps
+    )]
+
+
+    fig.update_layout(
+        template="none",
+        sliders=sliders,
+    )
+
+    return fig
 
 
 def plot_precision_recall_curves(gt, *args, title="Precision-Recall curve", names=None):
@@ -226,46 +289,6 @@ def plot_precision_recall_curves(gt, *args, title="Precision-Recall curve", name
     return fig
 
 
-def plotly_image_slider(images, ticks, slider_prefix="Distance < "):
-    """
-    Plots all images with a slider named after ticks.
-    """
-
-    fig = go.Figure()
-
-    for img in images:
-        fig.add_trace(
-            go.Image(z=img, visible=False)
-            )
-
-    fig.data[0].visible = True
-
-    steps = []
-    for i, t in enumerate(ticks):
-        step = dict(
-            method="restyle",
-            args=["visible", [False] * len(fig.data)],
-            label=t
-        )
-        step["args"][1][i] = True
-        steps.append(step)
-
-    sliders = [dict(
-        active=0,
-        currentvalue={"prefix": slider_prefix},
-        pad={"t": 50},
-        steps=steps
-    )]
-
-
-    fig.update_layout(
-        template="none",
-        sliders=sliders,
-    )
-
-    return fig
-
-
 def plotly_precision_recall_slider(precisions, recalls, ticks, slider_prefix="Distance < ", title="Precision-Recall curve", names=None):
     """
     :precisions: List of precision values. E.g. [[exp1], [exp2]]
@@ -315,24 +338,17 @@ def plotly_precision_recall_slider(precisions, recalls, ticks, slider_prefix="Di
     )
     return fig
 
-# TODO command line support
-def write_video_from_csv(csv_path, image_path, out_path, bbox_key="bbox20", fps=10):
 
-    df = pd.read_csv(csv_path, engine='python')
-
-    images = glob(join(image_path, "*.png"))
-
-    height, width, *_ = cv2.imread(images[0]).shape
-    video = cv2.VideoWriter(join(out_path, f'{basename(image_path)}.avi'), cv2.VideoWriter_fourcc(*'DIVX'), fps, (width, height))
-    for frame in np.unique(df.Frame):
-        image = cv2.imread(images[frame])
-        bboxes = list(df[df.Frame == frame][bbox_key])
-        image = draw_bboxes_on_image(image, bboxes)
-        video.write(image)
-    video.release()
+"""
+Helper functions.
+"""
 
 
 def parse_bbox(bbox, bbox_format, res_format="xywh"):
+    """
+    Restructure bbox to given format.
+    """
+
     if bbox_format == "xywh":
         xmin, ymin, width, height = bbox
         xmax = xmin + width
@@ -356,6 +372,19 @@ def parse_bbox(bbox, bbox_format, res_format="xywh"):
         return ymin, xmin, ymax, xmax
     else:
         raise NotImplementedError(f"{res_format} not supported.")
+
+
+def values_to_rgb(values):
+    minimum = np.min(values)
+    maximum = np.max(values)
+
+    norm = mpl_colors.Normalize(vmin=minimum, vmax=maximum, clip=True)
+    mapper = cm.ScalarMappable(norm=norm, cmap=cm.jet)
+
+    val_colors = np.array(list(map(mapper.to_rgba, values))) * 255
+    val_colors = val_colors[:, :3]
+    return val_colors.tolist()
+
 
 if __name__ == "__main__":
     pass
