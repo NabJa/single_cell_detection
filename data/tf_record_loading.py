@@ -9,8 +9,9 @@ from PIL import Image
 
 tf.compat.v1.enable_eager_execution()
 
+
 def load_tf_dataset(path):
-    raw_image_dataset = tf.data.TFRecordDataset(path)
+    raw_image_dataset = tf.data.TFRecordDataset(str(path))
 
     parsed_image_dataset = raw_image_dataset.map(_parse_image_function)
 
@@ -40,7 +41,7 @@ def load_tf_dataset(path):
 
 
 def tf_dataset_generator(path):
-    raw_image_dataset = tf.data.TFRecordDataset(path)
+    raw_image_dataset = tf.data.TFRecordDataset(str(path))
 
     parsed_image_dataset = raw_image_dataset.map(_parse_image_function)
 
@@ -61,6 +62,7 @@ def tf_dataset_generator(path):
         bboxes = np.stack((xmin, ymin, xmax, ymax), axis=-1)
 
         yield {"name": image_filename, "image": image, "bboxes": bboxes}
+
 
 def _parse_image_function(example_proto):
 

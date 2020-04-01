@@ -17,8 +17,8 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.lines import Line2D
-from matplotlib import colors as mpl_colors
 import matplotlib.cm as cm
+from matplotlib import colors as mpl_colors
 
 
 """
@@ -99,32 +99,28 @@ OpenCV2 drawings.
 """
 
 
-def draw_circles_on_image(image, points, point_colors=None, default_color=(255, 0, 0)):
+def draw_circles_on_image(image, *point_instances):
     """
     Draw points on a given image with different options of coloring.
 
     :image:
-    :points: List of point in [(x, y), ...] format.
-    :point_colors: List of color for each point.
-    :default_color: RGB tuple of color if all points have same color.
+    :points: Instances of points in [(x, y), ...] format.
     """
+    colors = list(mpl_colors.BASE_COLORS.values())[:len(point_instances)]
+    colors = np.array(colors) * 255
 
     if len(image.shape) == 2:
         img = np.stack((image,)*3, axis=-1)
     else:
         img = image.copy()
 
-    if not point_colors:
-        point_colors = [default_color for _ in  range(points.shape[0])]
-
-    for p, c in zip(points, point_colors):
-        x, y = p
-        radius = 5
-        thickness=-1
-        color = c[:3]
-
-        img = cv2.circle(img, (int(x), int(y)), radius, color, thickness)
-        img = cv2.circle(img, (int(x), int(y)), radius, (0, 0, 0), 0)
+    for i, points in enumerate(point_instances):
+        for p in points:
+            x, y = p
+            radius = 5
+            thickness = -1
+            img = cv2.circle(img, (int(x), int(y)), radius, colors[i], thickness)
+            img = cv2.circle(img, (int(x), int(y)), radius, (0, 0, 0), 0)
 
     return img
 

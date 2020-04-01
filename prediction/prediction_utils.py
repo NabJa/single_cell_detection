@@ -9,7 +9,7 @@ import pathlib
 import numpy as np
 import tensorflow as tf
 
-sys.path.insert(0, "C:\\Users\\N.Jabareen\\Projects\\data")
+from data import tf_record_loading as tf_loader
 from data import bbox_utils as box
 
 
@@ -53,7 +53,7 @@ def run_inference_for_single_image(model, image):
 
     output_dict["detection_boxes"] = detections_normalized
 
-    return
+    return output_dict
 
 
 def run_inference_on_batch(model, images):
@@ -130,6 +130,18 @@ def predict_on_tiled_image(model, image, tiles=4):
         tile_height = tile_height + new_height
 
     return all_bboxes, confidences
+
+
+def validation_predictor(model, tf_record):
+    """
+    Predicts on every image in tf_record
+    """
+    data = tf_loader.load_tf_dataset(tf_record)
+    images = data.get("images")
+    gt_bboxes = data.get("bboxes")
+    for image, gt_bbox in zip(images, gt_bboxes):
+        prediction = run_inference_for_single_image(model, image)
+        yield {"gt_boxes": gt_bbox, "pred": prediction, "image": image}
 
 
 def _normalize_bbox_coordinates(bboxes, col, row, width, height):

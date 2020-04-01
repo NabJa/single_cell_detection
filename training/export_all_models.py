@@ -8,9 +8,8 @@ import argparse
 
 
 def _dir_path(string):
-    path = Path(string)
-    if path.is_dir():
-        return path
+    if Path(string).is_dir():
+        return string
     raise NotADirectoryError(string)
 
 

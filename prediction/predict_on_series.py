@@ -28,6 +28,7 @@ from .prediction_utils import run_inference_for_single_image
 from data.bbox_utils import boxes_to_center_points
 from visualization import draw_circles_on_image
 
+
 def main(image_dir, model_dir, out_dir, out_type):
 
     if not out_dir:

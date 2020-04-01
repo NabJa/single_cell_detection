@@ -52,6 +52,7 @@ def extract_points_from_trackmate_xml(path, bbox_sizes):
 
     return points_df
 
+
 def apply_bbox_on_point(x, y, size=20):
     """
     Create a bbox of size around a point.
@@ -65,7 +66,8 @@ def apply_bbox_on_point(x, y, size=20):
     bbox_x_end = int(x + offset)
     bbox_y_end = int(y + offset)
 
-    return (bbox_x_start, bbox_y_start, bbox_x_end, bbox_y_end)
+    return bbox_x_start, bbox_y_start, bbox_x_end, bbox_y_end
+
 
 def _xml_path(path):
     if os.path.exists(path) and os.path.basename(path).endswith("xml"):
