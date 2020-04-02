@@ -4,7 +4,7 @@ Script to evaluate a trained model.
 Evaluation metrics:
     - Prediction images (Single images)
     - Precision recall values (One per image)
-    - TODO AUC boxplot (One box for every model)
+    - AUC boxplot (One box for every model)
     - TODO Tracks based on TrackMate (One XML file for every model)
 """
 
@@ -32,14 +32,40 @@ METRICS = {
 }
 
 
-def main(graph_dir):
+def main(graph_dir, pipeline):
 
     evaluation_path = make_eval_dir(graph_dir)
     model_dirs = [x for x in graph_dir.iterdir() if x.joinpath("saved_model").is_dir()]
 
-    for model_dir in model_dirs:
-        print("Evaluating model: ", model_dir.name)
-        model_eval_dir = evaluation_path.joinpath(model_dir.name)
+    if "predict" in pipeline:
+        get_metrics(model_dirs, evaluation_path, METRICS.copy())
+    if "compare" in pipeline:
+        compare_models(evaluation_path)
+
+
+def compare_models(eval_path):
+    metrics_dir = eval_path.rglob("metrics.p")
+    aucs, maps, names = [], [], []
+
+    for metric_path in metrics_dir:
+        metric = pickle.load(metric_path)
+
+        aucs.append(metric.get("aucs"))
+        maps.append(metric.get("maps"))
+        names.append(metric_path.parent.name)
+
+    visualization.plot_simple_lines(aucs, labels=names, save=eval_path.joinpath("aucs_line.png"))
+    visualization.plot_simple_lines(maps, labels=names, save=eval_path.joinpath("maps_line.png"))
+    visualization.plot_simple_boxplot(aucs, labels=names, save=eval_path.joinpath("aucs_box.png"))
+    visualization.plot_simple_boxplot(maps, labels=names, save=eval_path.joinpath("maps_box.png"))
+
+
+def get_metrics(model_dir, eval_path, metrics):
+    """
+    Fills metrics dictionary for a given model_dir.
+    """
+    for model_dir in model_dir:
+        model_eval_dir = eval_path.joinpath(model_dir.name)
         model_eval_dir.mkdir()
         model = load_model(model_dir)
 
@@ -47,8 +73,8 @@ def main(graph_dir):
         validation_length = find_validation_length(validation_path)
         predictor = validation_predictor(model, validation_path)
 
-        metrics = evaluate(predictor, METRICS, validation_length)
-
+        print("\nEvaluating model: ", model_dir.name)
+        metrics = evaluate(predictor, metrics, validation_length)
         save_metrics(metrics, model_eval_dir)
 
 
@@ -65,7 +91,7 @@ def save_metrics(metrics, out_dir):
         img_path = str(image_dir.joinpath(f"image_{i}.png"))
         cv2.imwrite(img_path, img)
 
-    pickle.dump(out_dir.joinpath("metrics.p").open("wb"), metrics)
+    pickle.dump(metrics, out_dir.joinpath("metrics.p").open("wb"))
 
 
 def evaluate(predictor, metric, total=None, detection_score=0.5):
@@ -144,8 +170,10 @@ def write_image_prediction(path, image, prediction, points=True):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--graph_dir", "-g", required=True)
-    parser.add_argument("--metric", "-m", nargs="*", default=["auc", "map", "precision", "recall", "images"])
+    parser.add_argument("--pipeline", "-p", nargs="*", default=["predict", "compare"])
     args = parser.parse_args()
 
+    args_pipeline = [x.lower().strip() for x in args.pipeline]
+
     arg_metrics = {k: [] for k in args.metric}
-    main(Path(args.graph_dir))
+    main(Path(args.graph_dir), args_pipeline)
