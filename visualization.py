@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 import matplotlib.pyplot as plt
+from matplotlib.pylab import setp
 import matplotlib.patches as patches
 from matplotlib.lines import Line2D
 import matplotlib.cm as cm
@@ -92,6 +93,56 @@ def plot_bboxes_on_image(image, *bbox_instances, bbox_format="xy1xy2", labels=No
 
     ax.legend(legend_lines, labels, loc='center left', bbox_to_anchor=(1, 0.5))
     plt.show()
+
+
+def plot_simple_boxplot(boxes, colors=None, labels=None, title="", y_label="", y_range=None, save=None):
+    """
+    Simple Boxplot for every box in boxes.
+
+    :param boxes: List of lines to draw. Format: [[values1], [values2], ...]
+    :param colors: List of colors. Format: [color1, color2, ...]
+    :param labels: List of labels. Format: [label1, label2, ...]
+    :param save: Path to file the figure should be saved to. Default: Only show plot.
+    """
+    colors = list(mpl_colors.TABLEAU_COLORS.values())[:len(boxes)] if not colors else colors
+    labels = list(range(len(boxes))) if not labels else labels
+
+    plt.figure(figsize=(16, 8))
+    plt.title(title, fontsize=25)
+    for i, (b, c, l) in enumerate(zip(boxes, colors, labels)):
+        box = plt.boxplot(b, positions=[i], widths=0.5)
+        for box_property in box.values():
+            setp(box_property, color=c, lw=4)
+    plt.xticks(ticks=list(range(len(boxes))), labels=labels, fontsize=20)
+    plt.yticks(y_range, fontsize=20)
+    plt.ylabel(y_label, fontsize=20)
+    plt.grid(axis="y")
+    plt.savefig(save) if save else plt.show()
+
+
+def plot_simple_lines(lines, colors=None, labels=None, title="", x_label="", y_label="", save=None):
+    """
+    Simple multiple lines plot.
+
+    :param lines: List of lines to draw. Format: [[values1], [values2], ...]
+    :param colors: List of colors. Format: [color1, color2, ...]
+    :param labels: List of labels. Format: [label1, label2, ...]
+    :param save: Path to file the figure should be saved to. Default: Only show plot.
+    """
+    colors = list(mpl_colors.TABLEAU_COLORS.values())[:len(lines)] if not colors else colors
+    labels = list(range(len(lines))) if not labels else labels
+
+    plt.figure(figsize=(16, 8))
+    plt.title(title, fontsize=25)
+    for d, c, l in zip(lines, colors, labels):
+        plt.plot(d, linewidth=5, color=c, label=l, alpha=0.8)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.xlabel(x_label, fontsize=20)
+    plt.ylabel(y_label, fontsize=20)
+    plt.legend(fontsize=20)
+    plt.grid()
+    plt.savefig(save) if save else plt.show()
 
 
 """
