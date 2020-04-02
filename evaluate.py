@@ -44,6 +44,9 @@ def main(graph_dir, pipeline):
 
 
 def compare_models(eval_path):
+    """
+    Visualize comparison plots of saved model metrics.
+    """
     metrics_dir = eval_path.rglob("metrics.p")
     aucs, maps, names = [], [], []
 
@@ -70,7 +73,7 @@ def get_metrics(model_dir, eval_path, metrics):
         model = load_model(model_dir)
 
         validation_path = find_validation_image_path(model_dir)
-        validation_length = find_validation_length(validation_path)
+        validation_length = find_record_length(validation_path)
         predictor = validation_predictor(model, validation_path)
 
         print("\nEvaluating model: ", model_dir.name)
@@ -82,7 +85,6 @@ def save_metrics(metrics, out_dir):
     """
     Save images in metrics as images and other values in pickle file.
     """
-
     out_dir = Path(out_dir)
 
     image_dir = out_dir.joinpath("images")
@@ -103,7 +105,6 @@ def evaluate(predictor, metric, total=None, detection_score=0.5):
     :param total: Number of validation images.
     :param detection_score: Classification cutoff.
     """
-
     for prediction in tqdm(predictor, total=total):
 
         image, gt_bboxes, pred = prediction.get("image"), prediction.get("gt_boxes"), prediction.get("pred")
@@ -139,12 +140,18 @@ def find_validation_image_path(path):
     return Path(res[1:-1])
 
 
-def find_validation_length(path):
+def find_record_length(path):
+    """
+    Find number of annotations in tf_record.
+    """
     g = loader.tf_dataset_generator(str(path))
     return len([_ for _ in g])
 
 
 def make_eval_dir(path):
+    """
+    Make Evaluation dir. If existent, add timestamp.
+    """
     try:
         evaluation_path = path.joinpath("Evaluation")
         evaluation_path.mkdir()
