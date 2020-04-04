@@ -18,18 +18,12 @@ import cv2
 from tqdm import tqdm
 
 from prediction.prediction_utils import load_model, validation_predictor
-from data import bbox_utils as box
-from data import tf_record_loading as loader
+from prediction import generate_trackmate_xml as tracker
+from data import bbox_utils as box, tf_record_loading as loader
 import visualization
 import statistics
 
-METRICS = {
-    "aucs": [],
-    "maps": [],
-    "precisions": [],
-    "recalls": [],
-    "images": []
-}
+EVALUATION_EXISTS = False
 
 
 def main(graph_dir, pipeline):
@@ -38,9 +32,22 @@ def main(graph_dir, pipeline):
     model_dirs = [x for x in graph_dir.iterdir() if x.joinpath("saved_model").is_dir()]
 
     if "predict" in pipeline:
-        get_metrics(model_dirs, evaluation_path, METRICS.copy())
+        get_metrics(model_dirs, evaluation_path)
     if "compare" in pipeline:
-        compare_models(evaluation_path)
+        compare_models(graph_dir.joinpath("Evaluation"))
+    if "track" in pipeline:
+        track(evaluation_path)
+
+
+def track(eval_path):
+    predictions = eval_path.rglob("predictions.p")
+    for model_dir in eval_path:
+        predictions = model_dir.glob("predictions.p")
+
+        # Give predicted image shape.
+        tracker.points_to_xml(x, pred, y)
+
+    return
 
 
 def compare_models(eval_path):
@@ -51,7 +58,8 @@ def compare_models(eval_path):
     aucs, maps, names = [], [], []
 
     for metric_path in metrics_dir:
-        metric = pickle.load(metric_path)
+        print(metric_path)
+        metric = pickle.load(metric_path.open("rb"))
 
         aucs.append(metric.get("aucs"))
         maps.append(metric.get("maps"))
@@ -63,7 +71,7 @@ def compare_models(eval_path):
     visualization.plot_simple_boxplot(maps, labels=names, save=eval_path.joinpath("maps_box.png"))
 
 
-def get_metrics(model_dir, eval_path, metrics):
+def get_metrics(model_dir, eval_path):
     """
     Fills metrics dictionary for a given model_dir.
     """
@@ -77,16 +85,14 @@ def get_metrics(model_dir, eval_path, metrics):
         predictor = validation_predictor(model, validation_path)
 
         print("\nEvaluating model: ", model_dir.name)
-        metrics = evaluate(predictor, metrics, validation_length)
+        metrics = evaluate(predictor, validation_length, save_predictions=True)
         save_metrics(metrics, model_eval_dir)
 
 
 def save_metrics(metrics, out_dir):
     """
-    Save images in metrics as images and other values in pickle file.
+    Save images and metrics as images and other values in pickle file.
     """
-    out_dir = Path(out_dir)
-
     image_dir = out_dir.joinpath("images")
     image_dir.mkdir()
     for i, img in enumerate(metrics.pop("images", [])):
@@ -96,33 +102,43 @@ def save_metrics(metrics, out_dir):
     pickle.dump(metrics, out_dir.joinpath("metrics.p").open("wb"))
 
 
-def evaluate(predictor, metric, total=None, detection_score=0.5):
+def evaluate(predictor, total=None, save_predictions=None, detection_score=0.5):
     """
     Evaluates prediction of predictor.
 
     :param predictor: Generator of predictions.
-    :param metric: Dictionary of metrics to be saved.
     :param total: Number of validation images.
+    :param save_predictions: Pathlib output path.
     :param detection_score: Classification cutoff.
     """
+    metrics = {
+        "aucs": [],
+        "maps": [],
+        "precisions": [],
+        "recalls": [],
+        "images": []
+    }
+
     for prediction in tqdm(predictor, total=total):
 
         image, gt_bboxes, pred = prediction.get("image"), prediction.get("gt_boxes"), prediction.get("pred")
         pred_bboxes = pred.get("detection_boxes")[pred.get("detection_scores") >= detection_score]
 
+        if save_predictions:
+            pickle.dump(pred, save_predictions.joinpath("predictions.p").open("wb"))
+
         mAP, precision, recall, _ = statistics.compute_ap(pred_bboxes, gt_bboxes)
 
-        metric.get("aucs").append(auc(recall, precision))
-        metric.get("maps").append(mAP)
-        metric.get("precision", precision)
-        metric.get("recall", recall)
+        metrics.get("aucs").append(auc(recall, precision))
+        metrics.get("maps").append(mAP)
+        metrics.get("precisions").append(precision)
+        metrics.get("recalls").append(recall)
 
         gt_points = box.boxes_to_center_points(gt_bboxes)
         pred_points = box.boxes_to_center_points(pred_bboxes)
         image = visualization.draw_circles_on_image(image, gt_points, pred_points)
-        metric.get("images").append(image)
-
-    return metric
+        metrics.get("images").append(image)
+    return metrics
 
 
 def find_validation_image_path(path):
@@ -156,6 +172,7 @@ def make_eval_dir(path):
         evaluation_path = path.joinpath("Evaluation")
         evaluation_path.mkdir()
     except FileExistsError:
+        EVALUATION_EXISTS = True
         evaluation_path = path.joinpath(f"Evaluation{time()}")
         evaluation_path.mkdir()
     return evaluation_path
@@ -182,5 +199,4 @@ if __name__ == "__main__":
 
     args_pipeline = [x.lower().strip() for x in args.pipeline]
 
-    arg_metrics = {k: [] for k in args.metric}
     main(Path(args.graph_dir), args_pipeline)
