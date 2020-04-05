@@ -79,8 +79,10 @@ def calc_bbox_from_mask(mask, rotation=False):
 
 
 def boxes_to_center_points(boxes, bbox_format="xy1xy2"):
-
-    xmin, ymin, xmax, ymax = boxes[0]
+    """
+    Calculate all center points of all boxes.
+    """
+    xmin, ymin, xmax, ymax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
 
     height = ymax - ymin
     width = xmax - xmin
@@ -90,7 +92,22 @@ def boxes_to_center_points(boxes, bbox_format="xy1xy2"):
 
     points = np.zeros((boxes.shape[0], 2))
 
-    points[..., 0] = boxes[..., 0] + x_offset
-    points[..., 1] = boxes[..., 1] + y_offset
+    points[:, 0] = xmin + x_offset
+    points[:, 1] = ymin + y_offset
 
     return points
+
+
+def box_to_point(box, bbox_format="xy1xy2"):
+    """
+    Calculate the center point of a box.
+    """
+    xmin, ymin, xmax, ymax = box
+
+    height = ymax - ymin
+    width = xmax - xmin
+
+    x_offset = width/2
+    y_offset = height/2
+
+    return xmin + x_offset, ymin + y_offset
