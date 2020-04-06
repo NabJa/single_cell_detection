@@ -27,6 +27,38 @@ Matplotlib plots.
 """
 
 
+def heatmap(data, title="", xlabel="", ylabel="", xticks=None, yticks=None):
+    """
+    Plots a heatmap of the given data.
+
+    :param data: Numpy array of shape (row, col)
+    """
+
+    xticks = np.round(np.linspace(0, 0.9, data.shape[0]), 2)
+    yticks = np.round(np.linspace(0, 0.9, data.shape[1]), 2)
+
+    fig, ax = plt.subplots()
+    ax.imshow(data)
+
+    ax.set_xticks(np.arange(data.shape[0]))
+    ax.set_yticks(np.arange(data.shape[1]))
+    ax.set_ylabel(ylabel, fontsize=20)
+    ax.set_xlabel(xlabel, fontsize=20)
+    ax.set_xticklabels(xticks, fontsize=15)
+    ax.set_yticklabels(yticks, fontsize=15)
+
+    # Loop over data dimensions and create text annotations.
+    for i in range(10):
+        for j in range(10):
+            text = ax.text(j, i, f"{data[i, j]:.3f}",
+                           ha="center", va="center", color="black", fontsize=15)
+
+    ax.set_title(title, fontsize=25)
+    fig.set_size_inches(12, 12)
+    fig.tight_layout()
+    plt.show()
+
+
 def plot_image_distribution(image, title):
     """
     Plot 3D image distribution with pixel values in z-axis.
@@ -58,7 +90,7 @@ def density_scatter(x, y, **kwargs):
     plt.show()
 
 
-def plot_bboxes_on_image(image, *bbox_instances, bbox_format="xy1xy2", labels=None):
+def plot_bboxes_on_image(image, *bbox_instances, bbox_format="xy1xy2", labels=None, title=""):
     """
     Plot bounding boxes on image.
 
@@ -73,7 +105,8 @@ def plot_bboxes_on_image(image, *bbox_instances, bbox_format="xy1xy2", labels=No
     assert len(bbox_instances) < len(colors), f"Only {len(colors)} bbox instances supported."
 
     fig, ax = plt.subplots(1)
-    fig.set_size_inches(6, 6)
+    fig.set_size_inches(16, 16)
+    ax.set_title(title)
 
     # Display the image
     ax.imshow(image, cmap="gray")
