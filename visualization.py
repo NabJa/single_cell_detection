@@ -21,7 +21,7 @@ from matplotlib.lines import Line2D
 import matplotlib.cm as cm
 from matplotlib import colors as mpl_colors
 
-
+import statistics
 """
 Matplotlib plots.
 """
@@ -183,56 +183,60 @@ OpenCV2 drawings.
 """
 
 
-def draw_circles_on_image(image, *point_instances):
+def draw_circles_on_image(image, *point_instances, colors=None):
     """
     Draw points on a given image with different options of coloring.
 
     :image:
     :points: Instances of points in [(x, y), ...] format.
     """
-    colors = list(mpl_colors.BASE_COLORS.values())[:len(point_instances)]
-    colors = np.array(colors) * 255
 
-    if len(image.shape) == 2:
-        img = np.stack((image,)*3, axis=-1)
+    if np.array(colors).any():
+        new_colors = values_to_rgb(colors)
     else:
-        img = image.copy()
+        new_colors = plt.get_cmap("Set1").colors
+    new_colors = tuple(map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), new_colors))
+
+    gray_image = cv2.cvtColor(image, np.array(1), cv2.COLOR_GRAY2BGR)
+    radius = 5
+    thickness = -1
 
     for i, points in enumerate(point_instances):
-        for p in points:
+        for j, p in enumerate(points):
             x, y = p
-            radius = 5
-            thickness = -1
-            img = cv2.circle(img, (int(x), int(y)), radius, colors[i], thickness)
-            img = cv2.circle(img, (int(x), int(y)), radius, (0, 0, 0), 0)
+            color = new_colors[j] if np.array(colors).any() else new_colors[i]
+            gray_image = cv2.circle(gray_image, (int(x), int(y)), radius, color, thickness)
+            gray_image = cv2.circle(gray_image, (int(x), int(y)), radius, (0, 0, 0), 0)
 
-    return img
+    return gray_image
 
 
-# TODO add coloring options like in draw_circle_on_image function
-def draw_bboxes_on_image(image, *bbox_instances, bbox_format="xy1xy2"):
+def draw_bboxes_on_image(image, *bbox_instances, colors=None, bbox_format="xy1xy2"):
     """
     Draw bounding boxes on image.
 
     :image:
     :bbox_instances: Bboxes with format specified in bbox_format.
+    :param colors: Numpy array of colors.
     :bbox_format: Format of how bbox is saved. E.g. xy1xy2 = (xmin, ymin, xmax, ymax)
     """
 
-    colors = plt.get_cmap("Set1").colors
-    colors = tuple(map(lambda x: (int(x[0]*255), int(x[1]*255), int(x[2]*255)), colors))
-
-    assert len(bbox_instances) < len(colors), f"Only {len(colors)} bbox instances supported."
+    if np.array(colors).any():
+        new_colors = values_to_rgb(colors)
+    else:
+        new_colors = plt.get_cmap("Set1").colors
+    new_colors = tuple(map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), new_colors))
 
     gray_image = cv2.cvtColor(image, np.array(1), cv2.COLOR_GRAY2BGR)
     thickness = 2
 
     for i, bboxes in enumerate(bbox_instances):
-        for bbox in bboxes:
+        for j, bbox in enumerate(bboxes):
             xmin, ymin, xmax, ymax = parse_bbox(bbox, bbox_format, "xy1xy2")
+            color = new_colors[j] if np.array(colors).any() else new_colors[i]
             gray_image = cv2.rectangle(gray_image,
                                 (int(xmin), int(ymin)),
-                                (int(xmax), int(ymax)), colors[i], thickness)
+                                (int(xmax), int(ymax)), color, thickness)
 
     return gray_image
 
@@ -468,6 +472,3 @@ def values_to_rgb(values):
 
 if __name__ == "__main__":
     pass
-
-# Must be at the end to workaround cyclic import with statistics.py
-import statistics
