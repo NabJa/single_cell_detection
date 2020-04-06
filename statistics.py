@@ -5,6 +5,8 @@ Statistical utils for object detection tasks.
 import numpy as np
 from scipy.spatial import distance
 from data import bbox_utils as box
+from sklearn.metrics import auc
+from visualization import draw_circles_on_image
 
 
 def compute_overlaps(boxes1, boxes2):
@@ -26,9 +28,9 @@ def compute_overlaps(boxes1, boxes2):
     return overlaps
 
 
-def compute_iou(box, boxes, box_area, boxes_area):
+def compute_iou(query_box, boxes, box_area, boxes_area):
     """Calculates IoU of the given box with the array of the given boxes.
-    box: 1D vector [y1, x1, y2, x2]
+    query_box: 1D vector [y1, x1, y2, x2]
     boxes: [boxes_count, (y1, x1, y2, x2)]
     box_area: float. the area of 'box'
     boxes_area: array of length boxes_count.
@@ -37,10 +39,10 @@ def compute_iou(box, boxes, box_area, boxes_area):
     efficiency. Calculate once in the caller to avoid duplicate work.
     """
     # Calculate intersection areas
-    y1 = np.maximum(box[0], boxes[:, 0])
-    y2 = np.minimum(box[2], boxes[:, 2])
-    x1 = np.maximum(box[1], boxes[:, 1])
-    x2 = np.minimum(box[3], boxes[:, 3])
+    y1 = np.maximum(query_box[0], boxes[:, 0])
+    y2 = np.minimum(query_box[2], boxes[:, 2])
+    x1 = np.maximum(query_box[1], boxes[:, 1])
+    x2 = np.minimum(query_box[3], boxes[:, 3])
     intersection = np.maximum(x2 - x1, 0) * np.maximum(y2 - y1, 0)
     union = box_area + boxes_area[:] - intersection[:]
     iou = intersection / union
@@ -48,6 +50,13 @@ def compute_iou(box, boxes, box_area, boxes_area):
 
 
 def compute_matches(pred_boxes, gt_boxes, iou_threshold, score_threshold=0.0):
+    """
+    Compute matches of prediction to gt.
+
+    :return pred_match: indices of matches in gt
+    :return gt_match: indices of matches in pred
+    :return overlaps: matrix of iou values of every pred, gt combination
+    """
     overlaps = compute_overlaps(pred_boxes, gt_boxes)
 
     # Loop through predictions and find matching ground truth boxes
@@ -79,7 +88,7 @@ def compute_matches(pred_boxes, gt_boxes, iou_threshold, score_threshold=0.0):
     return gt_match, pred_match, overlaps
 
 
-def compute_ap(pred_boxes, gt_boxes, iou_threshold=0.5):
+def compute_ap(pred_boxes, gt_boxes, iou_threshold=0.5, bbox_format="xy1xy2"):
     """Compute Average Precision at a set IoU threshold (default 0.5).
 
     Returns:
@@ -88,10 +97,37 @@ def compute_ap(pred_boxes, gt_boxes, iou_threshold=0.5):
     recalls: List of recall values at different class score thresholds.
     overlaps: [pred_boxes, gt_boxes] IoU overlaps.
     """
+
+    if bbox_format == "xy1xy2":
+        pred_boxes = np.apply_along_axis(box.bbox_xy1xy2_to_yx1yx2, 1, pred_boxes)
+        gt_boxes = np.apply_along_axis(box.bbox_xy1xy2_to_yx1yx2, 1, gt_boxes)
+
     # Get matches and overlaps
     gt_match, pred_match, overlaps = compute_matches(
         pred_boxes, gt_boxes, iou_threshold)
 
+    precisions, recalls = get_precisions_recalls_from_matches(pred_match, gt_match)
+
+    mAP = compute_ap(precisions, recalls)
+
+    return mAP, precisions, recalls, overlaps
+
+
+def compute_mean_ap(precisions, recalls):
+    """
+    Compute the mean average precision for a list of precisions, recalls.
+    """
+    indices = np.where(recalls[:-1] != recalls[1:])[0] + 1
+    return np.sum((recalls[indices] - recalls[indices - 1]) * precisions[indices])
+
+
+def get_precisions_recalls_from_matches(pred_match, gt_match):
+    """
+    Given matches between prediction and gt, predict precisions and recalls at each prediction step.
+
+    :param pred_match: Matches of prediction to gt. (As computed by compute_matches())
+    :param gt_match: Matches of gt to pred. (As computed by compute_matches())
+    """
     # Compute precision and recall at each prediction box step
     precisions = np.cumsum(pred_match > -1) / (np.arange(len(pred_match)) + 1)
     recalls = np.cumsum(pred_match > -1).astype(np.float32) / len(gt_match)
@@ -105,39 +141,42 @@ def compute_ap(pred_boxes, gt_boxes, iou_threshold=0.5):
     # for all following recall thresholds, as specified by the VOC paper.
     for i in range(len(precisions) - 2, -1, -1):
         precisions[i] = np.maximum(precisions[i], precisions[i + 1])
-
-    # Compute mean AP over recall range
-    indices = np.where(recalls[:-1] != recalls[1:])[0] + 1
-    mAP = np.sum((recalls[indices] - recalls[indices - 1]) *
-                 precisions[indices])
-
-    return mAP, precisions, recalls, overlaps
+    return precisions, recalls
 
 
-def compute_precision_recall(pred_boxes, gt_boxes, iou):
-    """Compute the recall and precision at the given IoU threshold.
-
-    pred_boxes: [N, (y1, x1, y2, x2)] in image coordinates
-    gt_boxes: [N, (y1, x1, y2, x2)] in image coordinates
+def get_performance_metrics(pred, gt, iou):
     """
-    # Measure overlaps
-    overlaps = compute_overlaps(pred_boxes, gt_boxes)
-    iou_max = np.max(overlaps, axis=1)
-    iou_argmax = np.argmax(overlaps, axis=1)
+    Get performance metrics as defined in:
+        https://en.wikipedia.org/wiki/Receiver_operating_characteristic
 
-    positive_ids = np.where(iou_max >= iou)[0]
-    negative_ids = np.where(iou_max < iou)[0]
+    :param pred: Predicted bboxes [N, (x1, y1, x2, y2)]
+    :param gt: Ground truth bboxes [N, (x1, y1, x2, y2)]
+    :param iou: IoU threshold to define true detection
 
-    matched_gt_boxes = iou_argmax[positive_ids]
-    unmatched_gt_boxes = iou_argmax[negative_ids]
+    :return: Dictionary of performance metrics
+    """
+    gt_match, pred_match, overlaps = compute_matches(pred, gt, iou)
 
-    true_positives = len(set(matched_gt_boxes))
-    false_negatives = len(set(unmatched_gt_boxes))
+    tp = np.sum(pred_match > -1)
+    fn = np.sum(gt_match == -1)
+    fp = np.sum(pred_match == -1)
 
-    recall = true_positives / gt_boxes.shape[0]
-    precision = true_positives / (true_positives+false_negatives)
+    precisions, recalls = get_precisions_recalls_from_matches(pred_match, gt_match)
+    mAP = compute_mean_ap(precisions, recalls)
 
-    return recall, precision, positive_ids
+    return {
+        "tp": tp,
+        "fn": fn,
+        "fp": fp,
+        "recall": tp / (tp + fn),
+        "precision": tp / (tp + fp),
+        "recalls": recalls,
+        "precisions": precisions,
+        "fnr": fn / (fn + tp),
+        "fdr": fp / (fp + tp),
+        "map": mAP,
+        "auc": auc(recalls, precisions)
+    }
 
 
 def find_n_closest_points(distances, n):
@@ -151,7 +190,7 @@ def find_n_closest_points(distances, n):
     # Self similarity is taken into account
     n = n + 1
 
-    close_points_val = np.zeros((distances.shape[0] ,n))
+    close_points_val = np.zeros((distances.shape[0], n))
 
     for i in range(distances.shape[0]):
 
@@ -203,7 +242,7 @@ def evaluate_distance_cutoffs(pred, gt, cutoffs, image=None, k=3):
         if image is not None:
             # images_of_predictions.append(draw_bboxes_on_image(image, query_gt_boxes, query_pred_boxes))
             img = draw_circles_on_image(image, query_gt_points)
-            img = draw_circles_on_image(img, query_pred_points, default_color=(0, 0, 255))
+            img = draw_circles_on_image(img, query_pred_points)
             images_of_predictions.append(img)
 
         _, prec, rec, _ = compute_ap(query_pred_boxes, query_gt_boxes, 0.5)
@@ -212,7 +251,3 @@ def evaluate_distance_cutoffs(pred, gt, cutoffs, image=None, k=3):
         recalls.append(rec)
 
     return {"precisions": precisions, "recalls": recalls, "images": images_of_predictions}
-
-
-# Must be at the end to workaround cyclic import with visualization.py
-from visualization import draw_bboxes_on_image, draw_circles_on_image
