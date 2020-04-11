@@ -100,7 +100,7 @@ def t_nms(predictions, scores, window=3, iou=0.6, det=0.5, nms_func=greedy_nms):
     """
 
     # Apply NMS on all predictions
-    greedy_nms_scores = [greedy_nms(p, s, iou) for p, s in zip(predictions, scores)]
+    greedy_nms_scores = [nms_func(p, s, iou) for p, s in zip(predictions, scores)]
     processed_p = [p[nms_score >= det] for p, nms_score in zip(predictions, greedy_nms_scores)]
     processed_s = [s[nms_score >= det] for s, nms_score in zip(scores, greedy_nms_scores)]
 
