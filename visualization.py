@@ -4,6 +4,7 @@ Plotting library for object detection and model evaluation tasks.
 
 from os.path import join, basename
 from glob import glob
+import types
 
 import numpy as np
 import pandas as pd
@@ -242,23 +243,47 @@ def draw_bboxes_on_image(image, *bbox_instances, colors=None, bbox_format="xy1xy
 
 
 # TODO command line support
-# TODO generalize write video
 def write_video_from_csv(csv_path, image_path, out_path, bbox_key="bbox20", fps=10):
     """
     Write a video with bboxes from csv file with columns: [Frame, X_Position, Y_Position]
     """
+
+    def csv_generator(dataframe, image_paths):
+        for f in np.unique(dataframe.Frame):
+            img = cv2.imread(image_paths[f])
+            box = list(dataframe[dataframe.Frame == f][bbox_key])
+            img = draw_bboxes_on_image(img, box)
+            yield img
+
     df = pd.read_csv(csv_path, engine='python')
-
     images = glob(join(image_path, "*.png"))
+    video_path = join(out_path, f'{basename(image_path)}.avi')
+    write_video(csv_generator(df, images), video_path, fps)
 
-    height, width, *_ = cv2.imread(images[0]).shape
-    video = cv2.VideoWriter(join(out_path, f'{basename(image_path)}.avi'), cv2.VideoWriter_fourcc(*'DIVX'), fps, (width, height))
-    for frame in np.unique(df.Frame):
-        image = cv2.imread(images[frame])
-        bboxes = list(df[df.Frame == frame][bbox_key])
-        image = draw_bboxes_on_image(image, bboxes)
+
+def write_video(data, output, fps=5):
+    """
+    Write video from images.
+
+    :param data: Generator or list of images.
+    :param output: Output path. E.g. path/name.avi
+    :param fps: Frames per second.
+    """
+    if isinstance(data, list):
+        height, width, *_ = data[0].shape
+        video = cv2.VideoWriter(output, cv2.VideoWriter_fourcc(*"XVID"), fps, (width, height))
+    elif isinstance(data, types.GeneratorType):
+        image = next(data)
+        height, width, *_ = image.shape
+        video = cv2.VideoWriter(output, cv2.VideoWriter_fourcc(*"XVID"), fps, (width, height))
         video.write(image)
-    video.release()
+    else:
+        raise NotImplementedError(f"File writer for type: {type(data)} is not supported.")
+
+    for image in data:
+        video.write(image)
+        video.release()
+    return True
 
 
 """
