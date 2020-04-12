@@ -23,6 +23,8 @@ import matplotlib.cm as cm
 from matplotlib import colors as mpl_colors
 
 import statistics
+from data import bbox_utils as box
+
 """
 Matplotlib plots.
 """
@@ -51,8 +53,8 @@ def heatmap(data, title="", xlabel="", ylabel="", xticks=None, yticks=None):
     # Loop over data dimensions and create text annotations.
     for i in range(10):
         for j in range(10):
-            text = ax.text(j, i, f"{data[i, j]:.3f}",
-                           ha="center", va="center", color="black", fontsize=15)
+            ax.text(j, i, f"{data[i, j]:.3f}",
+                    ha="center", va="center", color="black", fontsize=15)
 
     ax.set_title(title, fontsize=25)
     fig.set_size_inches(12, 12)
@@ -179,6 +181,16 @@ def plot_simple_lines(lines, colors=None, labels=None, title="", x_label="", y_l
     plt.savefig(save) if save else plt.show()
 
 
+def plot_circles_from_boxes(image, boxes, colors=None):
+    """
+    Plot circles on image, given bounding boxes.
+    """
+    points = box.boxes_to_center_points(boxes)
+    img = draw_circles_on_image(image, points, colors=colors)
+    plt.figure(figsize=(12,12))
+    plt.imshow(img)
+    plt.show()
+
 """
 OpenCV2 drawings.
 """
@@ -210,6 +222,15 @@ def draw_circles_on_image(image, *point_instances, colors=None):
             gray_image = cv2.circle(gray_image, (int(x), int(y)), radius, (0, 0, 0), 0)
 
     return gray_image
+
+
+def draw_circles_from_boxes(image, boxes, colors=None):
+    """
+    Draw circles on image, given bounding boxes.
+    """
+    points = box.boxes_to_center_points(boxes)
+    img = draw_circles_on_image(image, points, colors=colors)
+    return img
 
 
 def draw_bboxes_on_image(image, *bbox_instances, colors=None, bbox_format="xy1xy2"):
@@ -282,7 +303,8 @@ def write_video(data, output, fps=5):
 
     for image in data:
         video.write(image)
-        video.release()
+
+    video.release()
     return True
 
 
@@ -321,7 +343,6 @@ def plotly_image_slider(images, ticks, slider_prefix="Distance < "):
         pad={"t": 50},
         steps=steps
     )]
-
 
     fig.update_layout(
         template="none",
