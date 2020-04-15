@@ -14,19 +14,19 @@ from datetime import datetime
 def main(train_path, log_name):
 
     models = [x for x in train_path.iterdir() if x.is_dir()]
+    train_path = str(Path(__file__).parent.joinpath("train.py"))
 
     if log_name.is_file():
         log_name.unlink()
 
     for model in models:
-
         with open(log_name, 'a+') as log_file:
             log_file.write(f"Start training {model} {datetime.now()}\n")
 
         config_path = next(model.glob("[!pipeline]*.config"))
 
         tic = time.time()
-        subprocess.run(["python", "train.py", "--logtostderr",
+        subprocess.run(["python", train_path, "--logtostderr",
                         f"--train_dir={model}", f"--pipeline_config_path={config_path}"])
         tac = time.time()
 
@@ -41,7 +41,6 @@ def _text_file(path):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_dir", "-c", required=True)
     parser.add_argument("--log_path", "-l", type=_text_file)
