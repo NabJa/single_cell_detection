@@ -3,27 +3,15 @@ Writes tf_records given a input format.
 """
 
 import argparse
-import warnings
-
-import io
 import os
-from os.path import join, splitext
-
-import random
-import math
+from os.path import join
+from pathlib import Path
 import numpy as np
 import pandas as pd
-
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from matplotlib.lines import Line2D
-
-from PIL import Image
 import cv2
-
 import tensorflow as tf
 
-from trackmate_xml_to_csv import extract_points_from_trackmate_xml
+from data.trackmate_xml_to_csv import extract_points_from_trackmate_xml
 
 
 def int64_feature(value):
@@ -54,6 +42,7 @@ def is_image(file):
         return False
     except:
         print("WARNING: unknown image file in image folder: ", file)
+
 
 def write_tf_records(image_dir, bboxes, filename="bboxes.tfrecord"):
     """
