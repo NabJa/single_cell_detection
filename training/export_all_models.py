@@ -21,6 +21,7 @@ def find_latest_model(path):
 
 
 def main(model_dir, out_dir):
+    export_graph_path = str(Path(__file__).parent.joinpath("export_inference_graph.py"))
 
     out_dir.mkdir(exist_ok=True)
     model_subdirs = [x for x in model_dir.iterdir() if x.is_dir()]
@@ -30,13 +31,13 @@ def main(model_dir, out_dir):
         max_model_number = find_latest_model(model)
         config_path = next(model.glob("[!pipeline]*.config"))
 
-        model = model.joinpath(f"model.ckpt-{max_model_number}")
         model_out_dir = out_dir.joinpath(model.name)
+        model = model.joinpath(f"model.ckpt-{max_model_number}")
 
-        subprocess.run(["python", "export_inference_graph.py", "--input_type image_tensor",
-                        "--pipeline_config_path", config_path,
-                        "--trained_checkpoint_prefix", model,
-                        "--output_directory", model_out_dir], check=True)
+        subprocess.run(["python", export_graph_path, "--input_type image_tensor",
+                        "--pipeline_config_path", str(config_path),
+                        "--trained_checkpoint_prefix", str(model),
+                        "--output_directory", str(model_out_dir)])
 
 
 if __name__ == "__main__":
