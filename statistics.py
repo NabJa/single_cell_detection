@@ -6,7 +6,7 @@ import numpy as np
 from scipy.spatial import distance
 from data import bbox_utils as box
 from sklearn.metrics import auc
-from visualization import draw_circles_on_image
+import visualization
 
 
 def compute_overlaps(boxes1, boxes2):
@@ -241,8 +241,8 @@ def evaluate_distance_cutoffs(pred, gt, cutoffs, image=None, k=3):
 
         if image is not None:
             # images_of_predictions.append(draw_bboxes_on_image(image, query_gt_boxes, query_pred_boxes))
-            img = draw_circles_on_image(image, query_gt_points)
-            img = draw_circles_on_image(img, query_pred_points)
+            img = visualization.draw_circles_on_image(image, query_gt_points)
+            img = visualization.draw_circles_on_image(img, query_pred_points)
             images_of_predictions.append(img)
 
         _, prec, rec, _ = compute_ap(query_pred_boxes, query_gt_boxes, 0.5)
