@@ -3,19 +3,24 @@ Utility functions to predict on images given a tenforlow object detection API mo
 """
 
 import sys
-import os
-from os.path import join
-import pathlib
+import argparse
+from pathlib import Path
+import pickle
+
 import numpy as np
 import tensorflow as tf
+import cv2
+
+sys.path.append(str(Path(__file__).parents[1]))
 
 from data import tf_record_loading as tf_loader
 from data import bbox_utils as box
+from visualization import draw_circles_from_boxes
 
 
 def load_model(model_name):
 
-    model_dir = pathlib.Path(model_name)/"saved_model"
+    model_dir = Path(model_name)/"saved_model"
 
     model = tf.saved_model.load(str(model_dir))
     model = model.signatures['serving_default']
@@ -153,3 +158,52 @@ def _normalize_bbox_coordinates(bboxes, col, row, width, height):
 
     new_bboxes = bboxes + np.array([new_xmin, new_ymin, new_xmax, new_ymax])
     return new_bboxes
+
+
+"""
+ARGPARSE
+"""
+
+
+def _image_path(p):
+    formats = [".png", ".tif", ".tiff", ".jpg", ".jpeg"]
+    p = Path(p)
+    if p.is_file() and p.suffix in formats:
+        return p
+    else:
+        raise ValueError(f"Image must be one of the following formats: {formats}")
+
+
+def _model_path(p):
+    p = Path(p)
+    if p.is_dir() and p.joinpath("saved_model").is_dir():
+        return p
+    else:
+        raise ValueError("Model must be saved tensorflow model containing \"saved_model\" subfolder.")
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model", required=True, type=_model_path, help="Path to save tensorflow model.")
+    parser.add_argument("-i", "--image", type=_image_path, help="Runs prediction on single image.")
+    parser.add_argument("-o", "--output", help="Output path. Will be created if does not exist.")
+    parser.add_argument("-v", "--visualize", default=True, help="Wheather prediction should be visualized.")
+    args = parser.parse_args()
+
+    if args.image:
+        model = load_model(str(args.model))
+        image = cv2.imread(str(args.image))
+        print("Predicting...")
+        prediction = run_inference_for_single_image(model, image)
+        if args.output:
+            out_path = Path(args.output)
+            out_path.mkdir(parents=True, exist_ok=True)
+        else:
+            out_path = Path().cwd()
+        pickle.dump(prediction, open(str(out_path.joinpath("raw_predictions.p")), "wb"))
+        print(f"Saved prediction in: {out_path}")
+
+        if args.visualize:
+            detection = prediction.get("detection_boxes")[prediction.get("detection_scores") >= 0.5]
+            out_img = draw_circles_from_boxes(image, detection)
+            cv2.imwrite(str(out_path.joinpath("res_image.png")), out_img)
