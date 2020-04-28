@@ -4,7 +4,13 @@ This repository contains all tools to train and test the object detection algori
 Implementation of the networks can be found in the tensorflow object detection API.
 Evaluation is done on both, brightfield and lensfree microscopy images.
 
+
+## Prediction
+Tensorflow version: >= 2.0  
+Instruction: [wiki](https://gitlab.lrz.de/single_cell_heterogeneity/single_cell_detection/-/wikis/Prediction)
+
 ## Training
+Tensorflow version: < 2.0  
 To be able to train your own network the tensorflow object detection API must be installed. Make sure that the API is apped to your path variable. 
  
 
