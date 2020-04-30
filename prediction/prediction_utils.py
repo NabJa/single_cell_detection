@@ -3,6 +3,7 @@ Utility functions to predict on images given a tenforlow object detection API mo
 """
 
 import sys
+
 import argparse
 from pathlib import Path
 import pickle
@@ -10,8 +11,6 @@ import pickle
 import numpy as np
 import tensorflow as tf
 import cv2
-
-sys.path.append(str(Path(__file__).parents[1]))
 
 from data import tf_record_loading as tf_loader
 from data import bbox_utils as box
