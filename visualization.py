@@ -191,6 +191,7 @@ def plot_circles_from_boxes(image, boxes, colors=None):
     plt.imshow(img)
     plt.show()
 
+
 """
 OpenCV2 drawings.
 """
@@ -306,6 +307,23 @@ def write_video(data, output, fps=5):
 
     video.release()
     return True
+
+
+def write_text_on_image(image, text, position, size=1, color=(255,255,255), thicknes=3):
+    return cv2.putText(image, text, position, cv2.FONT_HERSHEY_SIMPLEX, size, color, thicknes, cv2.LINE_AA)
+
+
+def mask_color_img(img, mask, color=(255, 0, 0), alpha=0.3):
+    """
+    Mask a RGB image.
+    :return: Masked image.
+    """
+
+    out = img.copy()
+    img_layer = img.copy()
+    img_layer[mask.astype(np.bool)] = color
+    out = cv2.addWeighted(img_layer, alpha, out, 1 - alpha, 0, out)
+    return out
 
 
 """
