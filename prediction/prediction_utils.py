@@ -12,6 +12,7 @@ import numpy as np
 import tensorflow as tf
 import cv2
 
+sys.path.append("../")
 from data import tf_record_loading as tf_loader
 from data import bbox_utils as box
 from visualization import draw_circles_from_boxes
