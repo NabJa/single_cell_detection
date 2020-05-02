@@ -1,7 +1,15 @@
 """
 Script to train all models in training folder.
-Training folder must contain a folder for each model named after the mode.
+Training folder must contain a folder for each model named after the model.
 Each model folder must contain a config file with naming convention: {model_name}.config
+
+Example folder structure:
+
+    models
+        rcnn_brightfield
+            rcnn_brightfield.config
+        ssd_brightfield
+            ssd_brightfield.config
 """
 
 import argparse
