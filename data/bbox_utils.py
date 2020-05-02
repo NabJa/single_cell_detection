@@ -111,3 +111,17 @@ def box_to_point(box, bbox_format="xy1xy2"):
     y_offset = height/2
 
     return xmin + x_offset, ymin + y_offset
+
+
+def point_to_box(point, size=30):
+    """Transform point (x, y) to fixed sized box (x1, y1, x2, y2)."""
+    offset = size // 2
+
+    px, py = point[0], point[1]
+
+    x1 = px - offset if px - offset > 0 else 0
+    y1 = py - offset if py - offset > 0 else 0
+    x2 = px + offset
+    y2 = py + offset
+
+    return (x1, y1, x2, y2)
