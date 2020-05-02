@@ -35,19 +35,19 @@ def main(graph_dir, pipeline):
         get_metrics(model_dirs, evaluation_path)
     if "compare" in pipeline:
         compare_models(graph_dir.joinpath("Evaluation"))
-    if "track" in pipeline:
-        track(evaluation_path)
+    # if "track" in pipeline:
+    #     track(evaluation_path)
 
 
-def track(eval_path):
-    predictions = eval_path.rglob("predictions.p")
-    for model_dir in eval_path:
-        predictions = model_dir.glob("predictions.p")
-
-        # Give predicted image shape.
-        tracker.points_to_xml(x, pred, y)
-
-    return
+# def track(eval_path):
+#     predictions = eval_path.rglob("predictions.p")
+#     for model_dir in eval_path:
+#         predictions = model_dir.glob("predictions.p")
+#
+#         # Give predicted image shape.
+#         tracker.points_to_xml(x, pred, y)
+#
+#     return
 
 
 def compare_models(eval_path):
@@ -85,7 +85,7 @@ def get_metrics(model_dir, eval_path):
         predictor = validation_predictor(model, validation_path)
 
         print("\nEvaluating model: ", model_dir.name)
-        metrics = evaluate(predictor, validation_length, save_predictions=True)
+        metrics = evaluate(predictor, validation_length)
         save_metrics(metrics, model_eval_dir)
 
 
@@ -102,7 +102,7 @@ def save_metrics(metrics, out_dir):
     pickle.dump(metrics, out_dir.joinpath("metrics.p").open("wb"))
 
 
-def evaluate(predictor, total=None, save_predictions=None, detection_score=0.5):
+def evaluate(predictor, total=None, detection_score=0.5):
     """
     Evaluates prediction of predictor.
 
@@ -123,10 +123,7 @@ def evaluate(predictor, total=None, save_predictions=None, detection_score=0.5):
 
         image, gt_bboxes, pred = prediction.get("image"), prediction.get("gt_boxes"), prediction.get("pred")
         pred_bboxes = pred.get("detection_boxes")[pred.get("detection_scores") >= detection_score]
-
-        if save_predictions:
-            pickle.dump(pred, save_predictions.joinpath("predictions.p").open("wb"))
-
+        print(pred_bboxes.shape, gt_bboxes.shape)
         mAP, precision, recall, _ = statistics.compute_ap(pred_bboxes, gt_bboxes)
 
         metrics.get("aucs").append(auc(recall, precision))

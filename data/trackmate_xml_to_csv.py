@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import pandas as pd
 
+
 def extract_points_from_trackmate_xml(path, bbox_sizes):
     """
     Parses TrackMate ouput xml file.

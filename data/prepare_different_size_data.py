@@ -51,6 +51,7 @@ def tf_record_example_generator(path, image_folder_name, number_of_tiles, bbox_s
                 tf_record_example = tf_record_writer.bbox_to_tf_example(tile_image, f"{tile_name}_{image_path}", tile_bboxes)
                 yield tf_record_example
 
+
 def write_tf_record(path, record_generator):
     with tf.io.TFRecordWriter(path) as writer:
         for record in record_generator:
