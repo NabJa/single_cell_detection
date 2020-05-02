@@ -108,7 +108,7 @@ def compute_ap(pred_boxes, gt_boxes, iou_threshold=0.5, bbox_format="xy1xy2"):
 
     precisions, recalls = get_precisions_recalls_from_matches(pred_match, gt_match)
 
-    mAP = compute_ap(precisions, recalls)
+    mAP = compute_mean_ap(precisions, recalls)
 
     return mAP, precisions, recalls, overlaps
 
