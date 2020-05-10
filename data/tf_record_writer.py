@@ -11,7 +11,7 @@ import pandas as pd
 import cv2
 import tensorflow as tf
 
-from data.trackmate_xml_to_csv import extract_points_from_trackmate_xml
+from trackmate_xml_to_csv import extract_points_from_trackmate_xml
 
 
 def int64_feature(value):

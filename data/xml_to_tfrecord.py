@@ -6,39 +6,30 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from tqdm import tqdm
 import tensorflow as tf
 
 import cv2
-from data import trackmate_xml_to_csv as xml_to_csv
-from data import tf_record_writer
+import trackmate_xml_to_csv as xml_to_csv
+import tf_record_writer
 
 
-def tf_record_example_generator(path, image_folder_name):
-    directories = [x for x in path.iterdir() if x.is_dir()]
+def tf_record_example_generator(xml, images):
 
-    for directory in directories:
+    points_and_bbox_df = xml_to_csv.extract_points_from_trackmate_xml(xml, [40])
+    bbox_name = f"bbox{40}"
 
-        print(f"\tParse direcotry: {directory}")
+    image_paths = [x for x in images.glob("*.png")]
+    frames = np.unique(points_and_bbox_df.Frame)
 
-        xml = next(directory.glob("*.xml"))
-        image_dir = directory.joinpath(image_folder_name)
+    for i, frame in enumerate(frames):
+        print(f"Processing frame {i+1}/{len(frames)}", end="\r")
+        image_path = image_paths[frame]
 
-        points_and_bbox_df = xml_to_csv.extract_points_from_trackmate_xml(xml, [40])
+        bboxes = list(points_and_bbox_df[points_and_bbox_df.Frame == frame][bbox_name])
+        image = cv2.imread(str(image_path))
 
-        bbox_name = f"bbox{40}"
-
-        image_paths = [x for x in image_dir.glob("*.png")]
-        frames = np.unique(points_and_bbox_df.Frame)
-
-        for frame in tqdm(frames):
-            image_path = image_paths[frame]
-
-            bboxes = list(points_and_bbox_df[points_and_bbox_df.Frame == frame][bbox_name])
-            image = cv2.imread(str(image_path))
-
-            tf_record_example = tf_record_writer.bbox_to_tf_example(image, str(image_path), bboxes)
-            yield tf_record_example
+        tf_record_example = tf_record_writer.bbox_to_tf_example(image, str(image_path), bboxes)
+        yield tf_record_example
 
 
 def write_tf_record(path, record_generator):
@@ -49,17 +40,16 @@ def write_tf_record(path, record_generator):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Prepare tfdata")
-
-    parser.add_argument("--data_dir", "-d", required=True)
-    parser.add_argument("--image_folder_name", "-i", required=True)
+    parser = argparse.ArgumentParser(description="Prepare tf record dataset based on TrackMate XML and images.")
+    parser.add_argument("--xml", "-x", required=True, help="TrackMate XML file.")
+    parser.add_argument("--images", "-i", required=True, help="Path to .png images.")
     args = parser.parse_args()
 
-    DATA_DIR = Path(args.data_dir)
-    IMAGE_NAME = args.image_folder_name
+    XML_DIR = Path(args.xml)
+    IMAGES = Path(args.images)
 
-    FILENAME = f"{IMAGE_NAME}.tfrecord"
-    FILE_PATH = DATA_DIR.joinpath(FILENAME)
+    RECORD_GENERATOR = tf_record_example_generator(XML_DIR, IMAGES)
 
-    RECORD_GENERATOR = tf_record_example_generator(DATA_DIR, IMAGE_NAME)
+    FILE_PATH = XML_DIR.parent.joinpath(f"{XML_DIR.stem}.tfrecord")
     write_tf_record(str(FILE_PATH), RECORD_GENERATOR)
+    print("Saved tf_records in ", FILE_PATH)

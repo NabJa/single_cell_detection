@@ -6,7 +6,6 @@ import argparse
 import os
 from os.path import join
 import xml.etree.ElementTree as ET
-import numpy as np
 import pandas as pd
 
 
