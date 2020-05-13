@@ -161,6 +161,8 @@ def get_performance_metrics(pred, gt, iou):
     fn = np.sum(gt_match == -1)
     fp = np.sum(pred_match == -1)
 
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
     precisions, recalls = get_precisions_recalls_from_matches(pred_match, gt_match)
     mAP = compute_mean_ap(precisions, recalls)
 
@@ -168,14 +170,15 @@ def get_performance_metrics(pred, gt, iou):
         "tp": tp,
         "fn": fn,
         "fp": fp,
-        "recall": tp / (tp + fn),
-        "precision": tp / (tp + fp),
+        "recall": recall,
+        "precision": precision,
         "recalls": recalls,
         "precisions": precisions,
         "fnr": fn / (fn + tp),
         "fdr": fp / (fp + tp),
         "map": mAP,
-        "auc": auc(recalls, precisions)
+        "auc": auc(recalls, precisions),
+        "fscore": 2 * ((precision*recall) / (precision+recall))
     }
 
 
