@@ -1,8 +1,9 @@
 """
 Plotting library for object detection and model evaluation tasks.
 """
-
+import argparse
 from os.path import join, basename
+from pathlib import Path
 from glob import glob
 import types
 
@@ -24,6 +25,7 @@ from matplotlib import colors as mpl_colors
 
 import statistics
 from data import bbox_utils as box
+from data.tf_record_loading import tf_dataset_generator
 
 """
 Matplotlib plots.
@@ -264,6 +266,21 @@ def draw_bboxes_on_image(image, *bbox_instances, colors=None, bbox_format="xy1xy
     return gray_image
 
 
+def write_video_from_tfrecord(record, out_path, fps=10):
+    record = tf_dataset_generator(str(record))
+
+    def tfrecorf_generator(data):
+        for query in data:
+            image = query.get("image")
+            bboxes = query.get("bboxes")
+            image_name = Path(query.get("name").decode("utf-8"))
+            image = draw_circles_from_boxes(image, bboxes)
+            image = write_text_on_image(image, str(image_name), (50, 50), size=0.5, thicknes=1)
+            yield image
+
+    write_video(tfrecorf_generator(record), out_path, fps)
+
+
 # TODO command line support
 def write_video_from_csv(csv_path, image_path, out_path, bbox_key="bbox20", fps=10):
     """
@@ -309,7 +326,7 @@ def write_video(data, output, fps=5):
     return True
 
 
-def write_text_on_image(image, text, position, size=1, color=(255,255,255), thicknes=3):
+def write_text_on_image(image, text, position, size=1.0, color=(255, 255, 255), thicknes=3):
     return cv2.putText(image, text, position, cv2.FONT_HERSHEY_SIMPLEX, size, color, thicknes, cv2.LINE_AA)
 
 
@@ -535,4 +552,9 @@ def values_to_rgb(values):
 
 
 if __name__ == "__main__":
-    pass
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--tfrecord")
+    parser.add_argument("-o", "--output")
+    args = parser.parse_args()
+
+    write_video_from_tfrecord(args.tfrecord, args.output)
