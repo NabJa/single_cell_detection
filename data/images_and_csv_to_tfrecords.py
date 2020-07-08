@@ -13,8 +13,6 @@ import numpy as np
 import tensorflow as tf
 import cv2
 
-import image_slice_utils as slicer
-
 
 def int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))

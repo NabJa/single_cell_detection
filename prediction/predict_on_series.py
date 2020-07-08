@@ -3,15 +3,11 @@ Script to save predictions on a given image series.
 Predictions can be saved as images or as vid (avi).
 """
 
-import sys
-
 import os
-from os.path import join, basename
+from os.path import join
 import argparse
 
 import pathlib
-from PIL import Image
-import io
 from tqdm import tqdm
 from glob import glob
 import pickle
@@ -20,10 +16,7 @@ import cv2
 
 import tensorflow as tf
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-
-from .prediction_utils import run_inference_for_single_image
+from prediction_utils import run_inference_for_single_image
 
 from data.bbox_utils import boxes_to_center_points
 from visualization import draw_circles_on_image
@@ -96,7 +89,7 @@ def image_predictor(image_dir, model):
     index = 0
     while index < len(image_dir):
 
-        image = cv2.imread(image_dir[index], 1)
+        image = cv2.imread(str(image_dir[index]), 1)
 
         # prediction = _run_inference_for_single_image(model, image)
 
@@ -108,9 +101,9 @@ def image_predictor(image_dir, model):
         # shape_matrix = np.array([img_height, img_width, img_height, img_width])
         # normalized_bboxes = detected_boxes * shape_matrix
         prediction = run_inference_for_single_image(model, image)
-        bboxes = prediction.get("detection_boxes")[prediction.get("detection_scores") >= 0.5]
+        bboxes = prediction.get("detection_boxes")[prediction.get("detection_scores") >= 0.3]
         points = boxes_to_center_points(bboxes)
-        image = draw_circles_on_image(image, points, default_color=(0, 0, 255))
+        image = draw_circles_on_image(image, points)
         index += 1
         yield image
         # # Draw bboxes on image

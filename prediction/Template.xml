@@ -75,7 +75,7 @@
     <FilteredTracks />
   </Model>
   <Settings>
-    <ImageData filename="" folder="" width="" height="" nslices="" nframes="" pixelwidth="1.0" pixelheight="1.0" voxeldepth="1.0" timeinterval="1.0" />
+    <ImageData filename="" folder="" width="" height="" nslices="1" nframes="" pixelwidth="1.0" pixelheight="1.0" voxeldepth="1.0" timeinterval="1.0" />
     <BasicSettings xstart="0" xend="1127" ystart="0" yend="867" zstart="0" zend="0" tstart="0" tend="0" />
     <DetectorSettings DETECTOR_NAME="MANUAL_DETECTOR" RADIUS="17.0" />
     <InitialSpotFilter />

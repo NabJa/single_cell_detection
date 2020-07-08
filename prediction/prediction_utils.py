@@ -187,7 +187,7 @@ if __name__ == '__main__':
     parser.add_argument("-m", "--model", required=True, type=_model_path, help="Path to save tensorflow model.")
     parser.add_argument("-i", "--image", type=_image_path, help="Runs prediction on single image.")
     parser.add_argument("-o", "--output", help="Output path. Will be created if does not exist.")
-    parser.add_argument("-v", "--visualize", default=True, help="Wheather prediction should be visualized.")
+    parser.add_argument("-v", "--visualize", default=True, help="Wheather prediction should be visualized. DEFAULT=True")
     args = parser.parse_args()
 
     if args.image:

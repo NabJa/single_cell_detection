@@ -1,5 +1,7 @@
 """
 Export all models in a given directory.
+
+Requires Tensorflow 1.14.
 """
 
 from pathlib import Path
@@ -29,7 +31,7 @@ def main(model_dir, out_dir):
     for model in model_subdirs:
 
         max_model_number = find_latest_model(model)
-        config_path = next(model.glob("[!pipeline]*.config"))
+        config_path = _find_config(model)
 
         model_out_dir = out_dir.joinpath(model.name)
         model = model.joinpath(f"model.ckpt-{max_model_number}")
@@ -40,10 +42,18 @@ def main(model_dir, out_dir):
                         "--output_directory", str(model_out_dir)])
 
 
+def _find_config(path, ignore="pipeline"):
+    try:
+        config_path = [x for x in path.glob("*.config") if not x.name.split(".")[0] in ignore]
+    except StopIteration:
+        raise StopIteration(f"No valid config file found in {path}")
+    return config_path[0]
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Export all models from a given directory.')
+        description='Export all models from a given directory. Tensorflow 1.14 required.')
 
     parser.add_argument("--model_dir", "-m", type=_dir_path,
                         help="Path to directory with folders models.")
