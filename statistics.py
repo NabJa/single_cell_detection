@@ -254,3 +254,10 @@ def evaluate_distance_cutoffs(pred, gt, cutoffs, image=None, k=3):
         recalls.append(rec)
 
     return {"precisions": precisions, "recalls": recalls, "images": images_of_predictions}
+
+
+def rescale_min_max(values, nmin, nmax):
+    vmin, vmax = values.min(), values.max()
+    scaled = (values - vmin)/(vmax - vmin)
+    scaled = scaled * (nmax - nmin) + nmin
+    return scaled
