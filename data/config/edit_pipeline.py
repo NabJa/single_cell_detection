@@ -16,39 +16,56 @@ from object_detection.protos import pipeline_pb2
 from google.protobuf import text_format
 
 
-def main(config, records):
-    records = Path(records)
+def read_config(path):
+    config = pipeline_pb2.TrainEvalPipelineConfig()
 
-    for eval_record in records.iterdir():
+    with tf.io.gfile.GFile(str(path), "r") as f:
+        proto_str = f.read()
+        text_format.Merge(proto_str, config)
+    return config
 
-        record_parts = eval_record.name.split("_")
-        if "ignore" in record_parts:
-            continue
 
-        microscopy, cell_type = record_parts
-        cell_type = cell_type.split(".")[0]
-        record_parts.insert(1, "ignore")
-        train_name = "_".join(record_parts)
+def write_config(config, out):
+    config_text = text_format.MessageToString(config)
+    tf.io.write_file(str(out), config_text)
 
-        train_path = eval_record.parent.joinpath(train_name)
 
-        pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-        with tf.io.gfile.GFile(str(config), "r") as f:
-            proto_str = f.read()
-            text_format.Merge(proto_str, pipeline_config)
+def set_config_train_paths(config, paths):
+    config.train_input_reader.tf_record_input_reader.input_path[:] = paths
 
-        pipeline_config.eval_input_reader[0].tf_record_input_reader.input_path[:] = [str(eval_record)]
-        pipeline_config.train_input_reader.tf_record_input_reader.input_path[:] = [str(train_path)]
 
-        # Write new config
-        config_text = text_format.MessageToString(pipeline_config)
-        tf.io.write_file(str(records.joinpath(f"ssd_{microscopy}_{cell_type}.config")), config_text)
+def set_config_eval_paths(config, paths):
+    config.eval_input_reader[0].tf_record_input_reader.input_path[:] = paths
+
+
+def main(config_path, train_records, val_records, output):
+    train_records = Path(train_records)
+    val_records = Path(val_records)
+    output = Path(output)
+
+    for train_records in train_records.glob("*.tfrecord"):
+
+        config = read_config(config_path)
+
+        # Extract meta, prepare folders
+        microscope, cell_type, n_images = train_records.stem.split("_")
+
+        train_path = output.joinpath(f"{microscope}_{cell_type}_{n_images}")
+        train_path.mkdir()
+
+        val_record = [str(val_records.joinpath(f"{microscope}.tfrecord"))]
+        set_config_eval_paths(config, val_record)
+        set_config_train_paths(config, [str(train_records)])
+
+        write_config(config, train_path.joinpath(f"{train_path.name}.config"))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config", required=True, help="Default config to use. (e.g. ssd.config)")
-    parser.add_argument("-p", "--path")
+    parser.add_argument("-t", "--train_records", required=True)
+    parser.add_argument("-v", "--validation_records", required=True)
+    parser.add_argument("-o", "--output", required=True)
+    parser.add_argument("-c", "--config", default="ssd.config", help="Default config to use. DEFAULT: ssd.config")
 
     args = parser.parse_args()
-    main(args.config, args.path)
+    main(args.config, args.train_records, args.validation_records, args.output)
