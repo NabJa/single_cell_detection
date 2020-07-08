@@ -32,6 +32,41 @@ Matplotlib plots.
 """
 
 
+def plot_cell_size_hist2d(record_path, **hist2d_kwargs):
+    data_g = tf_dataset_generator(str(record_path))
+
+    heights = []
+    widths = []
+    for q in data_g:
+        boxes = q.get("bboxes")
+        for b in boxes:
+            xmin, ymin, xmax, ymax = b
+            w = xmax - xmin
+            h = ymax - ymin
+            heights.append(h)
+            widths.append(w)
+
+    plot_hist2d(heights, widths, **hist2d_kwargs)
+
+
+def plot_hist2d(x, y, title="", xlabel="", ylabel="", cbar=True, cbar_title=""):
+    plt.figure(figsize=(12, 12))
+    plt.title(title, fontsize=25)
+    h = plt.hist2d(x, y, bins=50, cmap="jet")
+
+    if cbar:
+        cbar = plt.colorbar(h[3])
+        cbar.set_ticks(cbar.get_ticks().astype(np.int))  # Transform cbar ticks to int
+        cbar.ax.set_title(cbar_title, fontdict={"fontsize": 20})  # Cbar title
+        cbar.ax.set_yticklabels(cbar.get_ticks(), fontdict={"fontsize": 15})  # Cbar tick size
+
+    plt.xlabel(xlabel, fontsize=20)
+    plt.ylabel(ylabel, fontsize=20)
+
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.show()
+
 def heatmap(data, title="", xlabel="", ylabel="", xticks=None, yticks=None):
     """
     Plots a heatmap of the given data.
@@ -555,6 +590,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--tfrecord")
     parser.add_argument("-o", "--output")
-    args = parser.parse_args()
+    parser.add_argument("-x", "--xout")
 
-    write_video_from_tfrecord(args.tfrecord, args.output)
+    args = parser.parse_args()
+    if args.xout:
+        x = Path(args.xout)
+        for i in x.glob("*.tfrecord"):
+            out = i.parent.joinpath(f"{i.stem}.avi")
+            write_video_from_tfrecord(str(i), str(out))
+    else:
+        write_video_from_tfrecord(args.tfrecord, args.output)
