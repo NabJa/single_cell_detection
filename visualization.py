@@ -67,6 +67,26 @@ def plot_hist2d(x, y, title="", xlabel="", ylabel="", cbar=True, cbar_title=""):
     plt.yticks(fontsize=15)
     plt.show()
 
+
+def plot_patches(tf_patches):
+    """Plot patches resulting from tf.image.extract_patches resheped to
+    (BATCH, ROWS, COLUMNS, WIDTH, HEIGHT, CHANNELS)."""
+
+    rows = tf_patches.shape[1]
+    cols = tf_patches.shape[2]
+
+    fig, axs = plt.subplots(nrows=rows, ncols=cols)
+    fig.set_size_inches(24, 24)
+    for row in range(rows):
+        for col in range(cols):
+            crop = tf_patches[0, row, col, ...].numpy()
+            if crop.shape[-1] > 1:
+                axs[row, col].imshow(crop)
+            else:
+                axs[row, col].imshow(crop[..., 0])
+    return fig, axs
+
+
 def heatmap(data, title="", xlabel="", ylabel="", xticks=None, yticks=None):
     """
     Plots a heatmap of the given data.
@@ -218,13 +238,17 @@ def plot_simple_lines(lines, colors=None, labels=None, title="", x_label="", y_l
     plt.savefig(save) if save else plt.show()
 
 
-def plot_circles_from_boxes(image, boxes, colors=None):
+def plot_circles_from_boxes(image, *bboxes, colors=None):
     """
     Plot circles on image, given bounding boxes.
     """
-    points = box.boxes_to_center_points(boxes)
-    img = draw_circles_on_image(image, points, colors=colors)
-    plt.figure(figsize=(12,12))
+    img = image.copy()
+    if colors is None:
+        colors = plt.get_cmap("Set1").colors
+    for boxes in bboxes:
+        points = box.boxes_to_center_points(boxes)
+        img = draw_circles_on_image(img, points, colors=colors)
+    plt.figure(figsize=(12, 12))
     plt.imshow(img)
     plt.show()
 
