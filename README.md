@@ -23,6 +23,6 @@ Training scripts:
 Evaluation and exploration of the trained models can be done in the following notebooks:
 - Evaluation of a single model: [detector_evaluation.ipynb](detector_evaluation.ipynb)
 - Comparison of multiple models: [Evaluation_of_multiple_models.ipynb](Evaluation_of_multiple_models.ipynb)
-- Generalizability on unseen cell types: TODO
+- Generalizability on unseen cell types: [cell_type_generalization.ipynb](cell_type_generalization.ipynb)
 
 For command line evaluation use [evaluate.py](evaluate.py).
